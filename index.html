@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon All Star Collection Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+        th { background-color: #f4f4f4; }
+        @media (max-width: 600px) {
+            table { font-size: 14px; }
+        }
+    </style>
+    <script>
+        // Initialize data array
+        let pokemonData = [];
+
+        // Load data from localStorage
+        function loadData() {
+            const storedData = localStorage.getItem('pokemonData');
+            if (storedData) {
+                pokemonData = JSON.parse(storedData);
+            }
+            renderTable();
+        }
+
+        // Render table
+        function renderTable() {
+            const tableBody = document.getElementById('pokemonTableBody');
+            tableBody.innerHTML = '';
+            pokemonData.forEach((pokemon, index) => {
+                const row = `<tr>
+                    <td><input type='checkbox' onchange='updateStatus(${index})' ${pokemon.checked ? 'checked' : ''}></td>
+                    <td>${pokemon.name}</td>
+                    <td>${pokemon.hkName}</td>
+                    <td><img src='${pokemon.image}' alt='${pokemon.name}' width='50'></td>
+                    <td><input type='date' onchange='updatePurchaseDate(${index}, this.value)'></td>
+                    <td><input type='number' onchange='updatePurchasePrice(${index}, this.value)' placeholder='Price'></td>
+                    <td><input type='text' onchange='updatePurchaseLocation(${index}, this.value)' placeholder='Location'></td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        // Update checkbox status
+        function updateStatus(index) {
+            pokemonData[index].checked = !pokemonData[index].checked;
+            saveData();
+        }
+
+        // Update purchase date
+        function updatePurchaseDate(index, date) {
+            pokemonData[index].purchaseDate = date;
+            saveData();
+        }
+
+        // Update purchase price
+        function updatePurchasePrice(index, price) {
+            pokemonData[index].purchasePrice = price;
+            saveData();
+        }
+
+        // Update purchase location
+        function updatePurchaseLocation(index, location) {
+            pokemonData[index].purchaseLocation = location;
+            saveData();
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('pokemonData', JSON.stringify(pokemonData));
+        }
+
+        // Download PDF
+        function downloadPDF() {
+            let doc = new jsPDF();
+            pokemonData.forEach(pokemon => {
+                doc.text(`${pokemon.name} - ${pokemon.purchaseDate || 'Not purchased'} - ${pokemon.purchasePrice || 'N/A'} - ${pokemon.purchaseLocation || 'N/A'}`, 10, 10 + (pokemonData.indexOf(pokemon) * 10));
+            });
+            doc.save('pokemon_collection.pdf');
+        }
+
+        // Initialize data when the page loads
+        window.onload = function() {
+            // Example of first 151 Pokémon data (English names, Hong Kong names, and image URLs)
+            pokemonData = [
+                {'name': 'Bulbasaur', 'hkName': '妙蛙種子', 'image': 'https://img.pokemondb.net/sprites/home/normal/bulbasaur.png'},
+                {'name': 'Ivysaur', 'hkName': '妙蛙草', 'image': 'https://img.pokemondb.net/sprites/home/normal/ivysaur.png'},
+                {'name': 'Venusaur', 'hkName': '妙蛙花', 'image': 'https://img.pokemondb.net/sprites/home/normal/venusaur.png'},
+                // ... Add other Pokémon data here
+            ];
+            loadData();
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <h1>Pokemon All Star Collection Tracker</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Owned</th>
+                <th>Name (English)</th>
+                <th>Name (香港譯名)</th>
+                <th>Image</th>
+                <th>Purchase Date</th>
+                <th>Price</th>
+                <th>Location</th>
+            </tr>
+        </thead>
+        <tbody id="pokemonTableBody"></tbody>
+    </table>
+    <button onclick="downloadPDF()">Download PDF</button>
+</body>
+</html>
