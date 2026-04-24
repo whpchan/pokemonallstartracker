@@ -9,7 +9,7 @@
   <!-- 引入 React 與 ReactDOM -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <!-- 引入 Babel 讓瀏覽器可以讀懂 JSX -->
+  <!-- 引入 Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   
   <!-- 🔥 引入 Firebase 雲端資料庫 SDK 🔥 -->
@@ -17,12 +17,14 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 
   <style>
-    /* 列印時隱藏不需要的元素 */
+    /* 列印時的專屬排版調整 */
     @media print {
       body { background-color: white !important; }
       .no-print { display: none !important; }
       .print-border { border: 1px solid #e5e7eb !important; border-radius: 0.5rem !important; }
       .print-shadow-none { box-shadow: none !important; }
+      /* 確保列印時強制顯示背景色 (例如打勾的綠色背景) */
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
   </style>
 </head>
@@ -33,7 +35,7 @@
     const { useState, useEffect, useMemo } = React;
 
     // =====================================================================
-    // 你的 Firebase 設定已經整合在這裡了！
+    // Firebase 設定
     // =====================================================================
     const firebaseConfig = {
       apiKey: "AIzaSyAkRLXBzsWf_D2JYTN4MCH-jpB4ChLGV9A",
@@ -44,19 +46,16 @@
       appId: "1:979687628379:web:9c18e2040e8fa81316297e"
     };
 
-    // 檢查使用者是否已經填寫了 Firebase 設定
     const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
 
     let db;
     let collectionRef;
     
-    // 初始化 Firebase
     if (isFirebaseConfigured) {
       if (!firebase.apps.length) {
         firebase.initializeApp(firebaseConfig);
       }
       db = firebase.firestore();
-      // 我們將資料固定存在 'pokemon_tracker' 集合中的 'my_collection' 文件裡
       collectionRef = db.collection('pokemon_tracker').doc('my_collection');
     }
 
@@ -98,16 +97,13 @@
       const [trackerData, setTrackerData] = useState({});
       const [dbError, setDbError] = useState(false);
 
-      // 資料初始化 (雲端同步 或 本地儲存)
       useEffect(() => {
         if (isFirebaseConfigured) {
-          // 雲端模式：監聽 Firebase 即時變化
           const unsubscribe = collectionRef.onSnapshot((docSnap) => {
             if (docSnap.exists) {
               setTrackerData(docSnap.data());
               setDbError(false);
             } else {
-              // 第一次使用，建立空資料庫
               collectionRef.set({}).catch(err => {
                 console.error("無法建立雲端文件:", err);
                 setDbError(true);
@@ -119,7 +115,6 @@
           });
           return () => unsubscribe();
         } else {
-          // 單機模式：讀取 Local Storage
           try {
             const saved = localStorage.getItem('hkPokemonPlushTracker');
             if (saved) setTrackerData(JSON.parse(saved));
@@ -127,14 +122,12 @@
         }
       }, []);
 
-      // 若為單機模式或雲端失敗，資料改變時寫入 Local Storage 作為備份
       useEffect(() => {
         if (!isFirebaseConfigured || dbError) {
           localStorage.setItem('hkPokemonPlushTracker', JSON.stringify(trackerData));
         }
       }, [trackerData, dbError]);
 
-      // 載入寶可夢資料
       useEffect(() => {
         const fetchPokemon = async () => {
           try {
@@ -156,11 +149,9 @@
         fetchPokemon();
       }, []);
 
-      // 更新邏輯 (同時支援雲端/本地)
       const handleDataUpdate = (newData) => {
         setTrackerData(newData);
         if (isFirebaseConfigured && !dbError) {
-          // 寫入雲端
           collectionRef.set(newData, { merge: true }).catch(err => {
             console.error("雲端儲存失敗:", err);
             setDbError(true);
@@ -210,7 +201,6 @@
 
       return (
         <div className="min-h-screen pb-20 md:pb-8">
-          {/* 狀態提示列 */}
           {dbError ? (
             <div className="no-print text-center py-2 text-sm font-bold flex justify-center items-center gap-2 bg-red-100 text-red-700">
               <Icons.CloudOff /> 雲端連線失敗 (請確認已在 Firebase 中建立 Firestore 並設為 Test Mode)，目前轉為單機儲存
@@ -230,7 +220,7 @@
               <div className="flex justify-between items-end mb-2">
                 <div>
                   <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-800">
-                    Pokémon ALL STAR COLLECTION 收藏追蹤器 (雲端版)
+                    Pokémon ALL STAR COLLECTION 收藏追蹤器
                   </h1>
                   <p className="text-sm text-slate-500 font-medium">初代 151 隻 (香港譯名版)</p>
                 </div>
@@ -287,7 +277,7 @@
 
           <div className="max-w-4xl mx-auto p-4 md:p-8">
             <div className="hidden print:block mb-6 text-center">
-               <h1 className="text-2xl font-bold">Pokémon ALL STAR COLLECTION 收藏追蹤器 (已收集: {collectedCount}/151)</h1>
+               <h1 className="text-2xl font-bold">Pokémon ALL STAR COLLECTION 收藏清單 (已收集: {collectedCount}/151)</h1>
             </div>
 
             {filteredPokemon.length === 0 ? (
@@ -324,10 +314,11 @@
 
       return (
         <div className={`bg-white rounded-2xl p-4 shadow-sm border transition-all print-border print-shadow-none ${
-          data.collected ? 'border-green-400 bg-green-50/20' : 'border-slate-200'
+          data.collected ? 'border-green-400 bg-green-50/20 print:border-black print:bg-white' : 'border-slate-200 print:border-gray-300'
         }`} style={{ breakInside: 'avoid' }}>
-          <div className="flex items-center gap-4">
-            <button onClick={onToggle} className="flex-shrink-0 focus:outline-none rounded-full no-print">
+          <div className="flex items-start gap-4">
+            {/* 螢幕顯示的打勾按鈕 */}
+            <button onClick={onToggle} className="flex-shrink-0 focus:outline-none rounded-full no-print mt-2">
               {data.collected ? (
                 <Icons.CheckCircle className="text-green-500" />
               ) : (
@@ -335,36 +326,51 @@
               )}
             </button>
             
-            <div className="hidden print:flex flex-shrink-0 w-8 h-8 border-2 border-slate-800 rounded-md items-center justify-center">
+            {/* 列印顯示的打勾方塊 */}
+            <div className="hidden print:flex flex-shrink-0 w-8 h-8 border-2 border-slate-800 rounded-md items-center justify-center mt-2">
                {data.collected && <span className="text-xl font-bold text-slate-800">✓</span>}
             </div>
 
-            <div className="flex-1 flex items-center gap-3 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
-              <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center p-2">
-                 <img src={pokemon.image} alt={pokemon.nameHk} className="w-full h-full object-contain" loading="lazy" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-slate-400">#{formattedId}</span>
-                <div className="flex items-baseline gap-2">
-                  <h3 className="text-lg font-bold text-slate-800">{pokemon.nameHk}</h3>
-                  <span className="text-xs text-slate-500 font-medium">{pokemon.nameEn}</span>
+            <div className="flex-1 cursor-pointer print:cursor-default" onClick={() => setIsExpanded(!isExpanded)}>
+              <div className="flex items-center gap-3">
+                <div className="w-16 h-16 bg-slate-100 rounded-xl flex items-center justify-center p-2 flex-shrink-0">
+                   <img src={pokemon.image} alt={pokemon.nameHk} className="w-full h-full object-contain" loading="lazy" />
                 </div>
-                {data.collected && (data.price || data.place) && (
-                  <p className="text-xs text-slate-500 mt-1 truncate max-w-[150px]">
-                    {data.price && <span className="font-medium mr-1 text-slate-700">{data.price}</span>}
-                    {data.place && <span>• {data.place}</span>}
-                  </p>
-                )}
+                <div>
+                  <span className="text-xs font-bold text-slate-400">#{formattedId}</span>
+                  <div className="flex items-baseline gap-2">
+                    <h3 className="text-lg font-bold text-slate-800">{pokemon.nameHk}</h3>
+                    <span className="text-xs text-slate-500 font-medium">{pokemon.nameEn}</span>
+                  </div>
+                </div>
               </div>
+              
+              {/* === 顯示購買詳細資料的區塊 (網頁版精簡，列印版完整) === */}
+              {data.collected && (data.date || data.price || data.place) && (
+                <div className="mt-2 text-xs text-slate-500 print:text-sm print:text-slate-800 print:mt-3 border-t border-dashed border-slate-200 print:border-slate-300 pt-2">
+                  {(data.date || data.price) && (
+                    <p className="truncate print:whitespace-normal print:overflow-visible">
+                      {data.date && <span className="mr-3">📅 {data.date}</span>}
+                      {data.price && <span className="font-medium mr-3 text-slate-700 print:text-black">💰 {data.price}</span>}
+                    </p>
+                  )}
+                  {data.place && (
+                    <p className="mt-0.5 truncate print:whitespace-normal print:overflow-visible text-slate-400 print:text-slate-600">
+                      📍 {data.place}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
-            <button onClick={() => setIsExpanded(!isExpanded)} className="p-2 text-slate-400 rounded-lg no-print">
+            <button onClick={() => setIsExpanded(!isExpanded)} className="p-2 text-slate-400 rounded-lg no-print mt-2">
               {isExpanded ? <Icons.ChevronUp /> : <Icons.ChevronDown />}
             </button>
           </div>
 
+          {/* 讓使用者輸入資料的表單 (列印時隱藏) */}
           {isExpanded && (
-            <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 gap-3 no-print">
+            <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3 no-print">
               <div className="col-span-1">
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">購買日期</label>
                 <input type="date" value={data.date} onChange={(e) => onUpdate('date', e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none" />
